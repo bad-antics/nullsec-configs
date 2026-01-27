@@ -1,0 +1,53 @@
+# NULLSEC ZSH CONFIGURATION
+# NullSec Linux Development Team
+
+# Colors
+autoload -U colors && colors
+
+# Prompt
+PROMPT='%F{red}[%F{cyan}NullSec%F{red}]-%F{red}[%F{green}%1~%F{red}]╼%f '
+
+# History
+HISTSIZE=10000
+SAVEHIST=20000
+HISTFILE=~/.zsh_history
+setopt HIST_IGNORE_DUPS
+setopt HIST_IGNORE_SPACE
+setopt SHARE_HISTORY
+
+# PATH
+export PATH="$PATH:$HOME/.local/bin:$HOME/.nullsec/bin"
+
+# Aliases
+alias ll='ls -lah --color=auto'
+alias la='ls -A --color=auto'
+alias grep='grep --color=auto'
+alias ..='cd ..'
+alias ...='cd ../..'
+
+# Security
+alias nmap-quick='nmap -sV -sC -O'
+alias nmap-full='nmap -sV -sC -O -p- -A'
+alias ports='ss -tunapl'
+
+# Git
+alias g='git'
+alias gs='git status'
+alias ga='git add'
+alias gc='git commit'
+alias gp='git push'
+
+# Functions
+hashcheck() {
+    [[ -z "$1" ]] && { echo "Usage: hashcheck <file>"; return 1; }
+    echo "MD5:    $(md5sum "$1" 2>/dev/null | cut -d' ' -f1)"
+    echo "SHA256: $(sha256sum "$1" 2>/dev/null | cut -d' ' -f1)"
+}
+
+genpass() { tr -dc 'A-Za-z0-9!@#$%^&*' < /dev/urandom | head -c "${1:-24}"; echo; }
+
+# Completions
+autoload -Uz compinit && compinit
+
+# Local overrides
+[[ -f ~/.zshrc.local ]] && source ~/.zshrc.local

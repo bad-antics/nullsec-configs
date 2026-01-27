@@ -1,0 +1,26 @@
+# NULLSEC PROFILE
+# NullSec Linux Development Team
+# Sourced for login shells
+
+# Environment
+export EDITOR=vim
+export VISUAL=vim
+export PAGER=less
+export LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+
+# XDG directories
+export XDG_CONFIG_HOME="$HOME/.config"
+export XDG_DATA_HOME="$HOME/.local/share"
+export XDG_CACHE_HOME="$HOME/.cache"
+
+# Path additions
+export PATH="$HOME/.local/bin:$PATH"
+export PATH="$HOME/.nullsec/bin:$PATH"
+
+# Security defaults
+export HISTCONTROL=ignoreboth:erasedups
+umask 027
+
+# Source bashrc for interactive shells
+[[ -n "$BASH" && -f ~/.bashrc ]] && source ~/.bashrc

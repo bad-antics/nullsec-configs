@@ -1,0 +1,219 @@
+# NULLSEC SHELL CONFIGURATION
+# NullSec Linux Development Team
+# https://github.com/nullsec-linux
+
+# ============================================================
+# COLORS
+# ============================================================
+RED='\033[1;31m'
+GREEN='\033[1;32m'
+BLUE='\033[1;34m'
+CYAN='\033[1;36m'
+YELLOW='\033[1;33m'
+MAGENTA='\033[1;35m'
+WHITE='\033[1;37m'
+DIM='\033[2m'
+RESET='\033[0m'
+
+# ============================================================
+# PROMPT
+# ============================================================
+export PS1='\[\033[1;31m\][\[\033[1;36m\]NullSec\[\033[1;31m\]]-[\[\033[1;32m\]\W\[\033[1;31m\]]╼\[\033[0m\] '
+
+# ============================================================
+# SHELL OPTIONS
+# ============================================================
+shopt -s histappend
+shopt -s checkwinsize
+shopt -s cdspell
+shopt -s autocd 2>/dev/null
+
+HISTSIZE=10000
+HISTFILESIZE=20000
+HISTCONTROL=ignoreboth:erasedups
+HISTTIMEFORMAT="%Y-%m-%d %H:%M:%S  "
+
+# ============================================================
+# PATH
+# ============================================================
+export PATH="$PATH:$HOME/.local/bin"
+export PATH="$PATH:$HOME/.nullsec/bin"
+
+# ============================================================
+# GENERAL ALIASES
+# ============================================================
+alias ll='ls -lah --color=auto'
+alias la='ls -A --color=auto'
+alias l='ls -CF --color=auto'
+alias ..='cd ..'
+alias ...='cd ../..'
+alias grep='grep --color=auto'
+alias diff='diff --color=auto'
+alias ip='ip -c'
+
+# ============================================================
+# SECURITY TOOL ALIASES
+# ============================================================
+alias nmap-quick='nmap -sV -sC -O'
+alias nmap-full='nmap -sV -sC -O -p- -A'
+alias nmap-vuln='nmap --script vuln'
+alias nmap-stealth='nmap -sS -T2 -f'
+alias pcap='tcpdump -i any -w capture-$(date +%Y%m%d-%H%M%S).pcap'
+alias sniff='tcpdump -i any -nn -X'
+alias ports='ss -tunapl'
+alias conns='netstat -tunapl 2>/dev/null | grep -E "ESTABLISHED|LISTEN"'
+
+# Hash utilities
+alias md5='md5sum'
+alias sha1='sha1sum'
+alias sha256='sha256sum'
+alias sha512='sha512sum'
+
+# Process monitoring
+alias psaux='ps auxf'
+alias psmem='ps aux --sort=-%mem | head -20'
+alias pscpu='ps aux --sort=-%cpu | head -20'
+
+# ============================================================
+# DEVELOPMENT ALIASES
+# ============================================================
+alias py='python3'
+alias pip='pip3'
+alias venv='python3 -m venv venv && source venv/bin/activate'
+alias activate='source venv/bin/activate'
+
+alias g='git'
+alias gs='git status'
+alias ga='git add'
+alias gc='git commit'
+alias gp='git push'
+alias gl='git log --oneline -20'
+alias gd='git diff'
+
+# ============================================================
+# ENCODING/DECODING ALIASES
+# ============================================================
+alias b64e='base64'
+alias b64d='base64 -d'
+alias hexe='xxd -p'
+alias hexd='xxd -p -r'
+
+# ============================================================
+# FUNCTIONS
+# ============================================================
+
+# Hash check
+hashcheck() {
+    local file="$1"
+    [[ -z "$file" ]] && { echo "Usage: hashcheck <file>"; return 1; }
+    echo "MD5:    $(md5sum "$file" 2>/dev/null | cut -d' ' -f1)"
+    echo "SHA1:   $(sha1sum "$file" 2>/dev/null | cut -d' ' -f1)"
+    echo "SHA256: $(sha256sum "$file" 2>/dev/null | cut -d' ' -f1)"
+}
+
+# Password generator
+genpass() {
+    local len="${1:-24}"
+    tr -dc 'A-Za-z0-9!@#$%^&*()_+=-' < /dev/urandom | head -c "$len"
+    echo
+}
+
+# Random hex string
+genhex() {
+    local bytes="${1:-32}"
+    openssl rand -hex "$bytes"
+}
+
+# Port check
+portcheck() {
+    local host="${1:-localhost}"
+    local port="$2"
+    [[ -z "$port" ]] && { echo "Usage: portcheck <host> <port>"; return 1; }
+    timeout 2 bash -c "echo >/dev/tcp/$host/$port" 2>/dev/null && \
+        echo "✓ $host:$port OPEN" || echo "✗ $host:$port CLOSED"
+}
+
+# Local subnet scan
+localscan() {
+    local subnet="${1:-$(ip route | grep default | awk '{print $3}' | sed 's/\.[0-9]*$/.0\/24/')}"
+    echo "Scanning: $subnet"
+    nmap -sn "$subnet" 2>/dev/null | grep -E "Nmap scan|Host is"
+}
+
+# HTTP headers
+headers() {
+    local url="$1"
+    [[ -z "$url" ]] && { echo "Usage: headers <url>"; return 1; }
+    curl -sI "$url"
+}
+
+# SSL certificate info
+sslinfo() {
+    local host="$1"
+    local port="${2:-443}"
+    [[ -z "$host" ]] && { echo "Usage: sslinfo <host> [port]"; return 1; }
+    echo | openssl s_client -connect "$host:$port" -servername "$host" 2>/dev/null | \
+        openssl x509 -noout -text | grep -E "Subject:|Issuer:|Not Before:|Not After:"
+}
+
+# Extract archives
+extract() {
+    local file="$1"
+    [[ ! -f "$file" ]] && { echo "File not found: $file"; return 1; }
+    case "$file" in
+        *.tar.bz2) tar xjf "$file" ;;
+        *.tar.gz)  tar xzf "$file" ;;
+        *.tar.xz)  tar xJf "$file" ;;
+        *.bz2)     bunzip2 "$file" ;;
+        *.gz)      gunzip "$file" ;;
+        *.tar)     tar xf "$file" ;;
+        *.zip)     unzip "$file" ;;
+        *.7z)      7z x "$file" ;;
+        *.rar)     unrar x "$file" ;;
+        *)         echo "Unknown format: $file" ;;
+    esac
+}
+
+# File entropy check
+entropy() {
+    local file="$1"
+    [[ ! -f "$file" ]] && { echo "File not found: $file"; return 1; }
+    ent "$file" 2>/dev/null || python3 -c "
+import math, sys
+with open('$file','rb') as f: d=f.read()
+freq={b:d.count(bytes([b])) for b in set(d)}
+ent=-sum((c/len(d))*math.log2(c/len(d)) for c in freq.values() if c>0)
+print(f'Entropy: {ent:.4f} bits/byte')
+print(f'Max: 8.0000 bits/byte')
+print(f'Randomness: {ent/8*100:.1f}%')
+"
+}
+
+# ============================================================
+# BANNER
+# ============================================================
+nullsec_banner() {
+    echo -e "\n${RED}╔═══════════════════════════════════════════════╗${RESET}"
+    echo -e "${RED}║${CYAN}           ███╗   ██╗██╗   ██╗██╗     ██╗     ${RED}║${RESET}"
+    echo -e "${RED}║${CYAN}           ████╗  ██║██║   ██║██║     ██║     ${RED}║${RESET}"
+    echo -e "${RED}║${CYAN}           ██╔██╗ ██║██║   ██║██║     ██║     ${RED}║${RESET}"
+    echo -e "${RED}║${CYAN}           ██║╚██╗██║██║   ██║██║     ██║     ${RED}║${RESET}"
+    echo -e "${RED}║${CYAN}           ██║ ╚████║╚██████╔╝███████╗███████╗${RED}║${RESET}"
+    echo -e "${RED}║${CYAN}           ╚═╝  ╚═══╝ ╚═════╝ ╚══════╝╚══════╝${RED}║${RESET}"
+    echo -e "${RED}║${GREEN}              ╚═╗ SECURITY RESEARCH ╔═╝        ${RED}║${RESET}"
+    echo -e "${RED}╚═══════════════════════════════════════════════╝${RESET}"
+    echo -e "${DIM}                NullSec Linux $(date +%Y)${RESET}\n"
+}
+
+[[ $- == *i* ]] && nullsec_banner
+
+# ============================================================
+# COMPLETIONS
+# ============================================================
+[[ -f /usr/share/bash-completion/bash_completion ]] && \
+    . /usr/share/bash-completion/bash_completion
+
+# ============================================================
+# LOCAL OVERRIDES (create ~/.bashrc.local for personal settings)
+# ============================================================
+[[ -f ~/.bashrc.local ]] && source ~/.bashrc.local
